@@ -17,14 +17,17 @@ public class Recipe {
     private String source;
     private String url;
     private String directions;
-    // todo add
-    // private Difficulty difficulty;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "recipe")
     private Set<Ingredient> ingredients;
 
     @Lob
     private Byte[] image;
+
+    // use EnumType "STRING" to use the actual text (and placement) of items in the enum object
+    // using "ORDINAL" will convert any existing enum entries into integers
+    @Enumerated(value = EnumType.STRING)
+    private Difficulty difficulty;
 
     // if recipe is deleted, delete the corresponding notes
     @OneToOne(cascade = CascadeType.ALL)
@@ -94,6 +97,14 @@ public class Recipe {
         this.directions = directions;
     }
 
+    public Set<Ingredient> getIngredients() {
+        return ingredients;
+    }
+
+    public void setIngredients(Set<Ingredient> ingredients) {
+        this.ingredients = ingredients;
+    }
+
     public Byte[] getImage() {
         return image;
     }
@@ -110,11 +121,14 @@ public class Recipe {
         this.notes = notes;
     }
 
-    public Set<Ingredient> getIngredients() {
-        return ingredients;
+
+
+
+    public Difficulty getDifficulty() {
+        return difficulty;
     }
 
-    public void setIngredients(Set<Ingredient> ingredients) {
-        this.ingredients = ingredients;
+    public void setDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty;
     }
 }
