@@ -101,20 +101,63 @@ public class IngredientServiceImpl implements IngredientService {
                         // if no uom is found, throw an exception
                         .orElseThrow(() -> new RuntimeException("UOM NOT FOUND"))); //todo address this
             } else {
-                //if the ingredient is NOT found, add new Ingredient (by converting the command ingredient into an actual ingredient
-                recipe.addIngredient(ingredientCommandToIngredient.convert(command));
+                //if the ingredient is NOT found, add new Ingredient by converting the command ingredient into an actual ingredient
+                Ingredient ingredient = ingredientCommandToIngredient.convert(command);
+                // set the associated recipe for the ingredient
+                ingredient.setRecipe(recipe);
+                // add the new ingredient to the recipe
+                recipe.addIngredient(ingredient);
             }
 
-            // persist the Recipe with updated ingredient in the dB
+            // persist the Recipe with updated or added ingredient in the dB
             Recipe savedRecipe = recipeRepository.save(recipe);
 
-            //to do check for fail
-            // return the Ingredient command object by ID
-            return ingredientToIngredientCommand.convert(savedRecipe.getIngredients().stream()
+            Optional<Ingredient> savedIngredientOptional = savedRecipe.getIngredients().stream()
                     .filter(recipeIngredients -> recipeIngredients.getId().equals(command.getId()))
-                    .findFirst()
-                    .get());
+                    .findFirst();
+
+            //if the ingredient is NOT present
+            if(!savedIngredientOptional.isPresent()){
+                //not totally safe... But best guess
+                savedIngredientOptional = savedRecipe.getIngredients().stream()
+                        .filter(recipeIngredients -> recipeIngredients.getDescription().equals(command.getDescription()))
+                        .filter(recipeIngredients -> recipeIngredients.getAmount().equals(command.getAmount()))
+                        .filter(recipeIngredients -> recipeIngredients.getUom().getId().equals(command.getUom().getId()))
+                        .findFirst();
+            }
+
+            //to do check for fail
+            return ingredientToIngredientCommand.convert(savedIngredientOptional.get());
         }
 
+    }
+
+    @Override
+    public void deleteById(Long recipeId, Long idToDelete) {
+
+        log.debug("Deleting ingredient: " + recipeId + ":" + idToDelete);
+
+        Optional<Recipe> recipeOptional = recipeRepository.findById(recipeId);
+
+        if(recipeOptional.isPresent()){
+            Recipe recipe = recipeOptional.get();
+            log.debug("found recipe");
+
+            Optional<Ingredient> ingredientOptional = recipe
+                    .getIngredients()
+                    .stream()
+                    .filter(ingredient -> ingredient.getId().equals(idToDelete))
+                    .findFirst();
+
+            if(ingredientOptional.isPresent()){
+                log.debug("found Ingredient");
+                Ingredient ingredientToDelete = ingredientOptional.get();
+                ingredientToDelete.setRecipe(null);
+                recipe.getIngredients().remove(ingredientOptional.get());
+                recipeRepository.save(recipe);
+            }
+        } else {
+            log.debug("Recipe Id Not found. Id:" + recipeId);
+        }
     }
 }
