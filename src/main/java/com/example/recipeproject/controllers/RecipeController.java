@@ -8,12 +8,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
+
+import javax.validation.Valid;
 
 @Slf4j
 @Controller
 public class RecipeController {
+
+    private static final String RECIPE_RECIPEFORM_URL = "recipe/recipeform";
 
     private final RecipeService recipeService;
 
@@ -36,7 +41,7 @@ public class RecipeController {
 
         model.addAttribute("recipe", new RecipeCommand());
 
-        return "recipe/recipeform";
+        return RECIPE_RECIPEFORM_URL;
     }
 
     @GetMapping("/recipe/{id}/update")
@@ -44,13 +49,28 @@ public class RecipeController {
 
         model.addAttribute("recipe", recipeService.findCommandById(Long.valueOf(id)));
 
-        return "recipe/recipeform";
+        return RECIPE_RECIPEFORM_URL;
     }
 
-    @PostMapping("/recipe")
-    public String saveOrUpdate(@ModelAttribute RecipeCommand command) {
+    @PostMapping("recipe")
+    public String saveOrUpdate(@Valid @ModelAttribute("recipe") RecipeCommand command, BindingResult bindingResult){
+
+        // if the form has errors
+        if(bindingResult.hasErrors()){
+
+            // get a list of all the errors . iterate over them -> and log each one to be displayed as a string
+            bindingResult.getAllErrors().forEach(objectError -> {
+                log.debug(objectError.toString());
+            });
+
+            // then go back to the form
+            return RECIPE_RECIPEFORM_URL;
+        }
+
+        // if no errors, go ahead and save the recipe
         RecipeCommand savedCommand = recipeService.saveRecipeCommand(command);
 
+        // and go back to the show recipe page
         return "redirect:/recipe/" + savedCommand.getId() + "/show";
     }
 
@@ -79,18 +99,5 @@ public class RecipeController {
         return modelAndView;
     }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(NumberFormatException.class)
-    public ModelAndView badNumberFormat(Exception exception) {
-        log.error("Handling bad request from number format: NumberFormatException");
-        log.error(exception.getMessage());
 
-        ModelAndView modelAndView = new ModelAndView();
-
-        modelAndView.setViewName("400error");
-
-        modelAndView.addObject("exception", exception);
-
-        return modelAndView;
-    }
 }
